@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 from opendbc.car import CanBusBase
 from opendbc.car.hyundai.values import HyundaiFlags
@@ -34,11 +35,8 @@ class CanBus(CanBusBase):
     return self._cam
 
 
-def create_steering_messages(packer, CP, CAN, enabled, lat_active, apply_torque, lkas_icon):
-
-  ret = []
-
-  values = {
+def create_steering_messages(packer, CP, CAN, enabled, lat_active, apply_torque, apply_angle, angle_max_torque, lkas_icon):
+  common_values = {
     "LKA_MODE": 2,
     "LKA_ICON": lkas_icon,
     "TORQUE_REQUEST": apply_torque,
@@ -46,17 +44,39 @@ def create_steering_messages(packer, CP, CAN, enabled, lat_active, apply_torque,
     "STEER_REQ": 1 if lat_active else 0,
     "STEER_MODE": 0,
     "HAS_LANE_SAFETY": 0,  # hide LKAS settings
-    "NEW_SIGNAL_1": 0,
     "NEW_SIGNAL_2": 0,
   }
 
+  lkas_values = copy.copy(common_values)
+  lkas_values["LKA_AVAILABLE"] = 0
+
+  # Angle control doesn't support using LFA yet
+  if CP.flags & HyundaiFlags.CANFD_ANGLE_STEERING:
+    # TODO: HAS_LANE_SAFETY isn't used by the stock system
+    lkas_values |= {
+      "LKA_MODE": 0,  # TODO: not used by the stock system
+      "TORQUE_REQUEST": 0,  # we don't use torque
+      "STEER_REQ": 0,  # we don't use torque
+      # this goes 0 when LFA lane changes, 3 when LKA_ICON is >=green
+      "LKA_AVAILABLE": 3 if lat_active else 0,
+      "LKAS_ANGLE_CMD": apply_angle,
+      "LKAS_ANGLE_ACTIVE": 2 if lat_active else 1,
+      "LKAS_ANGLE_MAX_TORQUE": angle_max_torque if lat_active else 0,
+    }
+
+  lfa_values = copy.copy(common_values)
+  lfa_values["NEW_SIGNAL_1"] = 0
+
+  # For cars with an ADAS ECU (commonly HDA2), by sending LKAS actuation messages we're
+  # telling the ADAS ECU to forward our steering and disable stock LFA lane centering.
+  ret = []
   if CP.flags & HyundaiFlags.CANFD_LKA_STEERING:
     lkas_msg = "LKAS_ALT" if CP.flags & HyundaiFlags.CANFD_LKA_STEERING_ALT else "LKAS"
     if CP.openpilotLongitudinalControl:
-      ret.append(packer.make_can_msg("LFA", CAN.ECAN, values))
-    ret.append(packer.make_can_msg(lkas_msg, CAN.ACAN, values))
+      ret.append(packer.make_can_msg("LFA", CAN.ECAN, lfa_values))
+    ret.append(packer.make_can_msg(lkas_msg, CAN.ACAN, lkas_values))
   else:
-    ret.append(packer.make_can_msg("LFA", CAN.ECAN, values))
+    ret.append(packer.make_can_msg("LFA", CAN.ECAN, lfa_values))
 
   return ret
 

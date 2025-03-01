@@ -22,6 +22,7 @@ class TestNissanSafety(common.PandaCarSafetyTest, common.AngleSteeringSafetyTest
   ACC_MAIN_BUS = 1
 
   # Angle control limits
+  STEER_ANGLE_MAX = 600  # deg, reasonable limit
   DEG_TO_CAN = 100
 
   ANGLE_RATE_BP = [0., 5., 15.]
