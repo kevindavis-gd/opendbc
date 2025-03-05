@@ -86,6 +86,8 @@ class CarController(CarControllerBase, EsccCarController, MadsCarController):
 
     # angle control
     else:
+      if CS.out.steeringPressed:
+        self.apply_angle_last = actuators.steeringAngleDeg
       self.apply_angle_last = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgoRaw,
                                                            CS.out.steeringAngleDeg, CC.latActive, self.params.ANGLE_LIMITS)
 
