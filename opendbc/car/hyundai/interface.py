@@ -110,6 +110,8 @@ class CarInterface(CarInterfaceBase):
     ret.vEgoStarting = 0.1
     ret.startAccel = 1.0
     ret.longitudinalActuatorDelay = 0.5
+    ret.lateralTuning.pid.kpBP = [15.0, 41.0]
+    ret.lateralTuning.pid.kpV = [0.18, 0.275]
 
     if ret.openpilotLongitudinalControl:
       ret.safetyConfigs[-1].safetyParam |= HyundaiSafetyFlags.FLAG_HYUNDAI_LONG.value
